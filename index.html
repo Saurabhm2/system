@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School ID Card System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Sora:wght@400;600;700&display=swap');
+
+  :root {
+    --primary: #1a3c6e;
+    --primary-light: #2563a8;
+    --accent: #f59e0b;
+    --accent-dark: #d97706;
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface2: #f8fafc;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --text2: #475569;
+    --text3: #94a3b8;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --info: #3b82f6;
+    --sidebar-w: 240px;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* LOGIN */
+  #login-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #0f2847 0%, #1a3c6e 50%, #1e4d8c 100%);
+    position: relative; overflow: hidden;
+  }
+  #login-screen::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 20% 80%, rgba(245,158,11,0.12) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(37,99,168,0.2) 0%, transparent 50%);
+  }
+  .login-card {
+    background: white; border-radius: 20px; padding: 48px 40px; width: 420px; max-width: 95vw;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.3); position: relative; z-index: 1;
+  }
+  .login-logo { text-align: center; margin-bottom: 32px; }
+  .login-logo .school-icon {
+    width: 72px; height: 72px; background: var(--primary); border-radius: 18px;
+    display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;
+    font-size: 32px;
+  }
+  .login-logo h1 { font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700; color: var(--primary); }
+  .login-logo p { font-size: 13px; color: var(--text2); margin-top: 4px; }
+  .form-group { margin-bottom: 20px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-group input {
+    width: 100%; padding: 12px 16px; border: 1.5px solid var(--border);
+    border-radius: var(--radius); font-size: 15px; font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s; color: var(--text);
+  }
+  .form-group input:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(37,99,168,0.1); }
+  .btn-login {
+    width: 100%; padding: 14px; background: var(--primary); color: white;
+    border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600;
+    font-family: inherit; cursor: pointer; transition: background 0.2s, transform 0.1s;
+    letter-spacing: 0.3px;
+  }
+  .btn-login:hover { background: var(--primary-light); }
+  .btn-login:active { transform: scale(0.99); }
+  .login-error { color: var(--danger); font-size: 13px; margin-top: 12px; text-align: center; display: none; }
+
+  /* APP LAYOUT */
+  #app { display: none; min-height: 100vh; }
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-w);
+    background: var(--primary); display: flex; flex-direction: column;
+    z-index: 100; transition: transform 0.3s;
+  }
+  .sidebar-logo {
+    padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .sidebar-logo .icon { font-size: 24px; }
+  .sidebar-logo span { font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; color: white; line-height: 1.3; }
+  .sidebar-logo small { display: block; color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 400; }
+  .nav-menu { flex: 1; padding: 16px 12px; overflow-y: auto; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+    border-radius: 8px; cursor: pointer; transition: background 0.15s; margin-bottom: 4px;
+    color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 500; text-decoration: none;
+    user-select: none;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.1); color: white; }
+  .nav-item.active { background: rgba(255,255,255,0.15); color: white; }
+  .nav-item .ni { width: 20px; text-align: center; font-size: 16px; }
+  .sidebar-footer { padding: 16px 12px; border-top: 1px solid rgba(255,255,255,0.1); }
+  .logout-btn {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    border-radius: 8px; cursor: pointer; color: rgba(255,255,255,0.6);
+    font-size: 14px; transition: color 0.15s, background 0.15s;
+    background: none; border: none; width: 100%; font-family: inherit;
+  }
+  .logout-btn:hover { color: white; background: rgba(255,0,0,0.15); }
+
+  .main { margin-left: var(--sidebar-w); padding: 32px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-header { margin-bottom: 28px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .page-title { font-family: 'Sora', sans-serif; font-size: 24px; font-weight: 700; color: var(--text); }
+  .page-subtitle { font-size: 14px; color: var(--text2); margin-top: 4px; }
+
+  /* CARDS */
+  .card { background: var(--surface); border-radius: 14px; border: 1px solid var(--border); overflow: hidden; }
+  .card-body { padding: 24px; }
+
+  /* STAT CARDS */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--surface); border-radius: 14px; border: 1px solid var(--border);
+    padding: 22px; display: flex; align-items: center; gap: 16px;
+  }
+  .stat-icon {
+    width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center;
+    justify-content: center; font-size: 22px; flex-shrink: 0;
+  }
+  .stat-icon.blue { background: #eff6ff; }
+  .stat-icon.green { background: #f0fdf4; }
+  .stat-icon.amber { background: #fffbeb; }
+  .stat-icon.red { background: #fef2f2; }
+  .stat-value { font-size: 30px; font-weight: 700; font-family: 'Sora', sans-serif; color: var(--text); line-height: 1; }
+  .stat-label { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px;
+    border-radius: 8px; font-size: 14px; font-weight: 600; font-family: inherit;
+    cursor: pointer; transition: all 0.15s; border: 1.5px solid transparent; white-space: nowrap;
+  }
+  .btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
+  .btn-primary:hover { background: var(--primary-light); border-color: var(--primary-light); }
+  .btn-success { background: var(--success); color: white; border-color: var(--success); }
+  .btn-success:hover { background: #059669; }
+  .btn-accent { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-accent:hover { background: var(--accent-dark); }
+  .btn-outline { background: white; color: var(--text); border-color: var(--border); }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+  .btn-xs { padding: 4px 10px; font-size: 12px; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th { padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  tbody td { padding: 13px 16px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+  tbody tr:hover { background: #f8fafc; }
+  tbody tr:last-child td { border-bottom: none; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-success { background: #d1fae5; color: #065f46; }
+  .badge-danger { background: #fee2e2; color: #991b1b; }
+  .badge-warning { background: #fef3c7; color: #92400e; }
+  .badge-info { background: #dbeafe; color: #1e40af; }
+
+  /* SEARCH BAR */
+  .search-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+  .search-input-wrap { position: relative; flex: 1; min-width: 240px; }
+  .search-input-wrap .icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 15px; pointer-events: none; }
+  .search-input {
+    width: 100%; padding: 10px 14px 10px 38px; border: 1.5px solid var(--border);
+    border-radius: 8px; font-size: 14px; font-family: inherit; color: var(--text);
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { outline: none; border-color: var(--primary-light); }
+  select.filter-sel {
+    padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 14px; font-family: inherit; color: var(--text); background: white;
+    cursor: pointer;
+  }
+  select.filter-sel:focus { outline: none; border-color: var(--primary-light); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: white; border-radius: 18px; width: 600px; max-width: 100%;
+    max-height: 90vh; overflow-y: auto; box-shadow: 0 40px 80px rgba(0,0,0,0.25);
+  }
+  .modal-header {
+    padding: 24px 28px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; }
+  .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text2); padding: 4px; line-height: 1; }
+  .modal-body { padding: 24px 28px; }
+  .modal-footer { padding: 16px 28px 24px; display: flex; gap: 12px; justify-content: flex-end; }
+
+  /* FORM */
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-row.one { grid-template-columns: 1fr; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+    border-radius: 8px; font-size: 14px; font-family: inherit; color: var(--text); background: white;
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(37,99,168,0.08); }
+  .field textarea { resize: vertical; min-height: 80px; }
+
+  /* PHOTO UPLOAD */
+  .photo-upload {
+    width: 120px; height: 140px; border: 2px dashed var(--border); border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; transition: border-color 0.2s; position: relative; overflow: hidden; margin: 0 auto 16px;
+  }
+  .photo-upload:hover { border-color: var(--primary); }
+  .photo-upload img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+  .photo-upload .upload-hint { font-size: 12px; color: var(--text3); text-align: center; padding: 8px; pointer-events: none; }
+  .photo-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  /* PAGINATION */
+  .pagination { display: flex; align-items: center; gap: 8px; padding: 16px 0; justify-content: flex-end; }
+  .pg-btn {
+    padding: 6px 12px; border: 1.5px solid var(--border); border-radius: 6px;
+    background: white; cursor: pointer; font-size: 13px; font-family: inherit;
+    transition: all 0.15s; color: var(--text);
+  }
+  .pg-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .pg-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .pg-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ID CARD PREVIEW (hidden, used for PDF) */
+  #id-card-canvas { display: none; }
+
+  /* DASHBOARD RECENT */
+  .recent-list { display: flex; flex-direction: column; gap: 0; }
+  .recent-item {
+    display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .recent-item:last-child { border-bottom: none; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--primary);
+    display: flex; align-items: center; justify-content: center; color: white;
+    font-size: 14px; font-weight: 700; flex-shrink: 0; overflow: hidden;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .recent-name { font-weight: 600; font-size: 14px; }
+  .recent-info { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .ml-auto { margin-left: auto; }
+
+  /* PROGRESS */
+  .progress-wrap { background: #e2e8f0; border-radius: 99px; height: 8px; margin-top: 10px; }
+  .progress-bar { height: 8px; border-radius: 99px; background: var(--success); transition: width 0.4s; }
+
+  /* TOAST */
+  .toast-wrap { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    padding: 14px 20px; border-radius: 10px; font-size: 14px; font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15); max-width: 320px;
+    animation: slideIn 0.3s ease; display: flex; align-items: center; gap: 10px;
+  }
+  .toast.success { background: #064e3b; color: #d1fae5; }
+  .toast.error { background: #7f1d1d; color: #fee2e2; }
+  .toast.info { background: #1e3a8a; color: #dbeafe; }
+  @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0; padding: 16px; }
+    .form-row { grid-template-columns: 1fr; }
+    .form-row.three { grid-template-columns: 1fr; }
+  }
+
+  /* CHART BARS */
+  .chart-bar-wrap { display: flex; flex-direction: column; gap: 10px; }
+  .chart-bar-row { display: flex; align-items: center; gap: 12px; }
+  .chart-bar-label { font-size: 13px; color: var(--text2); width: 80px; text-align: right; flex-shrink: 0; }
+  .chart-bar-track { flex: 1; background: #e2e8f0; border-radius: 99px; height: 10px; }
+  .chart-bar-fill { height: 10px; border-radius: 99px; transition: width 0.5s; }
+  .chart-bar-val { font-size: 13px; font-weight: 600; width: 36px; text-align: right; color: var(--text); }
+
+  /* TOP BAR */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border);
+  }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .user-chip { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; font-size: 13px; font-weight: 500; }
+  .user-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; }
+
+  .section-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--text2); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="school-icon">🏫</div>
+      <h1>School ID System</h1>
+      <p>Student Identity Card Management</p>
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="login-user" placeholder="Enter username" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="Enter password" autocomplete="current-password">
+    </div>
+    <button class="btn-login" onclick="doLogin()">Sign In →</button>
+    <div class="login-error" id="login-err">Invalid username or password</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="icon">🏫</span>
+      <span>School ID<small>Management System</small></span>
+    </div>
+    <div class="nav-menu">
+      <div class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard">
+        <span class="ni">📊</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('students')" data-page="students">
+        <span class="ni">👨‍🎓</span> Students
+      </div>
+      <div class="nav-item" onclick="showPage('idcards')" data-page="idcards">
+        <span class="ni">🪪</span> ID Cards
+      </div>
+      <div class="nav-item" onclick="showPage('reports')" data-page="reports">
+        <span class="ni">📋</span> Reports & Export
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="doLogout()">🚪 Logout</button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle">Overview of ID card generation status</div>
+        </div>
+        <div class="topbar-right">
+          <div class="user-chip"><span class="user-dot"></span> Admin</div>
+        </div>
+      </div>
+
+      <div class="stats-grid" id="stats-grid"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+        <div class="card">
+          <div class="card-body">
+            <div class="section-title">📈 Class-wise Progress</div>
+            <div id="class-chart" class="chart-bar-wrap"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <div class="section-title">📅 Recent Activity</div>
+            <div id="recent-activity" class="recent-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="section-title">🎯 Overall Progress</div>
+          <div id="overall-progress"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STUDENTS -->
+    <div class="page" id="page-students">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Students</div>
+          <div class="page-subtitle">Manage student records and information</div>
+        </div>
+        <button class="btn btn-primary" onclick="openAddStudent()">➕ Add New Student</button>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="search-bar">
+            <div class="search-input-wrap">
+              <span class="icon">🔍</span>
+              <input class="search-input" id="stu-search" placeholder="Search by name, ID, reg no..." oninput="renderStudentTable()">
+            </div>
+            <select class="filter-sel" id="stu-class-filter" onchange="renderStudentTable()">
+              <option value="">All Classes</option>
+            </select>
+            <select class="filter-sel" id="stu-div-filter" onchange="renderStudentTable()">
+              <option value="">All Divisions</option>
+              <option>A</option><option>B</option><option>C</option><option>D</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>Photo</th><th>Name</th><th>Class</th><th>Div</th>
+                  <th>Roll No</th><th>Reg No</th><th>Gender</th><th>Ad Year</th><th>ID Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="student-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="stu-pagination"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ID CARDS -->
+    <div class="page" id="page-idcards">
+      <div class="page-header">
+        <div>
+          <div class="page-title">ID Cards</div>
+          <div class="page-subtitle">Generate and manage student ID cards</div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-outline" onclick="printAllPending()">🖨️ Print All Pending</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="search-bar">
+            <div class="search-input-wrap">
+              <span class="icon">🔍</span>
+              <input class="search-input" id="id-search" placeholder="Search students..." oninput="renderIdTable()">
+            </div>
+            <select class="filter-sel" id="id-status-filter" onchange="renderIdTable()">
+              <option value="">All Status</option>
+              <option value="printed">Printed</option>
+              <option value="pending">Pending</option>
+            </select>
+            <select class="filter-sel" id="id-class-filter" onchange="renderIdTable()">
+              <option value="">All Classes</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>Photo</th><th>Name</th><th>Class/Div</th><th>Roll No</th>
+                  <th>Reg No</th><th>Blood Group</th><th>Print Status</th><th>Print Date</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="id-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="id-pagination"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="page" id="page-reports">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Reports & Export</div>
+          <div class="page-subtitle">Download student data and ID card status reports</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+        <div class="card">
+          <div class="card-body" style="text-align:center;padding:32px">
+            <div style="font-size:48px;margin-bottom:16px">📊</div>
+            <h3 style="font-size:18px;font-weight:700;margin-bottom:8px">Excel Report</h3>
+            <p style="color:var(--text2);font-size:14px;margin-bottom:24px">Export all student data with ID card print status in Excel format</p>
+            <button class="btn btn-success" onclick="exportExcel()" style="width:100%">⬇️ Download Excel (.xlsx)</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body" style="text-align:center;padding:32px">
+            <div style="font-size:48px;margin-bottom:16px">📄</div>
+            <h3 style="font-size:18px;font-weight:700;margin-bottom:8px">PDF Report</h3>
+            <p style="color:var(--text2);font-size:14px;margin-bottom:24px">Export full student report with print status in printable PDF format</p>
+            <button class="btn btn-danger" onclick="exportPDFReport()" style="width:100%">⬇️ Download PDF Report</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="section-title">📋 Full Student Report Preview</div>
+          <div class="search-bar">
+            <div class="search-input-wrap">
+              <span class="icon">🔍</span>
+              <input class="search-input" id="rep-search" placeholder="Search in report..." oninput="renderReportTable()">
+            </div>
+            <select class="filter-sel" id="rep-status" onchange="renderReportTable()">
+              <option value="">All Status</option>
+              <option value="printed">Printed</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>Name</th><th>Class</th><th>Div</th><th>Roll No</th>
+                  <th>Reg No</th><th>Ad Year</th><th>Gender</th><th>Blood</th><th>Contact</th><th>ID Status</th><th>Print Date</th>
+                </tr>
+              </thead>
+              <tbody id="report-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ADD/EDIT STUDENT MODAL -->
+<div class="modal-overlay" id="student-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="student-modal-title">Add New Student</div>
+      <button class="modal-close" onclick="closeModal('student-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;margin-bottom:20px">
+        <div class="photo-upload" id="photo-upload-area" onclick="document.getElementById('photo-file').click()">
+          <input type="file" id="photo-file" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)">
+          <img id="photo-preview" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover">
+          <div class="upload-hint" id="upload-hint">📷<br>Click to upload<br>student photo</div>
+        </div>
+        <small style="color:var(--text2);font-size:12px">Passport size photo (recommended 2×2 inch)</small>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Full Name *</label>
+          <input type="text" id="f-name" placeholder="Student full name">
+        </div>
+        <div class="field">
+          <label>Roll Number</label>
+          <input type="text" id="f-roll" placeholder="e.g. 6138">
+        </div>
+      </div>
+      <div class="form-row three">
+        <div class="field">
+          <label>Class / Standard *</label>
+          <select id="f-class">
+            <option value="">Select</option>
+            <option>Nursery</option><option>LKG</option><option>UKG</option>
+            <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+            <option>5th</option><option>6th</option><option>7th</option><option>8th</option>
+            <option>9th</option><option>10th</option><option>11th</option><option>12th</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Division</label>
+          <select id="f-div">
+            <option>A</option><option>B</option><option>C</option><option>D</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Gender</label>
+          <select id="f-gender">
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>General Reg. No</label>
+          <input type="text" id="f-regno" placeholder="e.g. 5511 or 9370308932">
+        </div>
+        <div class="field">
+          <label>Admission Year</label>
+          <select id="f-adyear">
+            <option>2024-2025</option><option>2025-2026</option><option>2026-2027</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Blood Group</label>
+          <select id="f-blood">
+            <option value="">Not Known</option>
+            <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+            <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Father's Name</label>
+          <input type="text" id="f-father" placeholder="Father's full name">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Mother's Name</label>
+          <input type="text" id="f-mother" placeholder="Mother's full name">
+        </div>
+        <div class="field">
+          <label>Contact Number</label>
+          <input type="tel" id="f-contact" placeholder="Mobile number">
+        </div>
+      </div>
+      <div class="form-row one">
+        <div class="field">
+          <label>Address</label>
+          <textarea id="f-address" placeholder="Full address"></textarea>
+        </div>
+      </div>
+      <input type="hidden" id="f-edit-id">
+      <input type="hidden" id="f-photo-data" value="">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('student-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStudent()">💾 Save Student</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW STUDENT MODAL -->
+<div class="modal-overlay" id="view-modal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <div class="modal-title">Student Details</div>
+      <button class="modal-close" onclick="closeModal('view-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="view-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('view-modal')">Close</button>
+      <button class="btn btn-primary" id="view-gen-btn">🪪 Generate ID Card</button>
+    </div>
+  </div>
+</div>
+
+<!-- ID CARD PREVIEW MODAL -->
+<div class="modal-overlay" id="idcard-modal">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <div class="modal-title">ID Card Preview</div>
+      <button class="modal-close" onclick="closeModal('idcard-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;align-items:center;gap:16px">
+      <div id="idcard-preview-wrap" style="width:100%"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('idcard-modal')">Close</button>
+      <button class="btn btn-accent" onclick="printIDCardPDF()" id="print-btn">🖨️ Print / Save PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<canvas id="id-card-canvas" width="638" height="1012"></canvas>
+
+<script>
+// ==================== DATA ====================
+const CREDS = { username: 'admin', password: 'saurabh' };
+let students = [];
+let currentStudentForCard = null;
+let stuPage = 1, idPage = 1;
+const PER_PAGE = 15;
+
+// ==================== STORAGE ====================
+function save() { localStorage.setItem('school_students', JSON.stringify(students)); }
+function load() {
+  const d = localStorage.getItem('school_students');
+  if (d) students = JSON.parse(d);
+  else seedSampleData();
+}
+
+function seedSampleData() {
+  const names = ['Rajvir Somnath Jamdar','Dnyaneshwari Savata Jadhav','Swaraj Chetan Patange','Sawant Shivansh Anil','Darade Hardik Suraj','Narute Aarav Nitin','Bhosale Pranav Shivaji','Kale Aaditya Vikas','Taware Era Aniket','Sharma Priya Ramesh','Patil Rohit Babasaheb','Kadam Sneha Suresh'];
+  const classes = ['2nd','LKG','LKG','LKG','LKG','5th','9th','9th','Nursery','3rd','7th','4th'];
+  const genders = ['Male','Female','Male','Female','Male','Male','Male','Male','Female','Female','Male','Female'];
+  const regnos = ['5511','9370308932','7028344262','L2-2026','L-1 2026','5510','5509','5508','N-15','5512','5513','5514'];
+  const blood = ['B+','O+','A+','','B+','A+','O+','AB+','B-','A-','O-','B+'];
+  names.forEach((name,i) => {
+    students.push({
+      id: 6130+i, name, class: classes[i], division:'A', gender:genders[i],
+      regNo: regnos[i], adYear:'2025-2026', blood:blood[i] || '',
+      father: 'Parent of '+name.split(' ')[0], mother: 'Mother of '+name.split(' ')[0],
+      contact:'9876543'+String(210+i).padStart(3,'0'),
+      address:'Pune, Maharashtra', photo:'', printed:i<4, printDate: i<4 ? '2026-04-01':'',
+      rollNo: 6130+i, addedDate: '2026-03-'+String(15+i).padStart(2,'0')
+    });
+  });
+  save();
+}
+
+function nextId() { return students.length ? Math.max(...students.map(s=>s.id))+1 : 1000; }
+
+// ==================== LOGIN ====================
+function doLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value.trim();
+  if(u===CREDS.username && p===CREDS.password) {
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    load();
+    refreshDashboard();
+    populateClassFilters();
+  } else {
+    document.getElementById('login-err').style.display='block';
+    setTimeout(()=>document.getElementById('login-err').style.display='none',2500);
+  }
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Enter' && document.getElementById('login-screen').style.display!=='none') doLogin(); });
+
+function doLogout() {
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+}
+
+// ==================== NAV ====================
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelector(`[data-page="${page}"]`).classList.add('active');
+  if(page==='dashboard') refreshDashboard();
+  if(page==='students') renderStudentTable();
+  if(page==='idcards') renderIdTable();
+  if(page==='reports') renderReportTable();
+}
+
+// ==================== DASHBOARD ====================
+function refreshDashboard() {
+  const total = students.length;
+  const printed = students.filter(s=>s.printed).length;
+  const pending = total - printed;
+  const pct = total ? Math.round(printed/total*100) : 0;
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-icon blue">👨‍🎓</div><div><div class="stat-value">${total}</div><div class="stat-label">Total Students</div></div></div>
+    <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-value">${printed}</div><div class="stat-label">ID Cards Printed</div></div></div>
+    <div class="stat-card"><div class="stat-icon amber">⏳</div><div><div class="stat-value">${pending}</div><div class="stat-label">Pending ID Cards</div></div></div>
+    <div class="stat-card"><div class="stat-icon red">📊</div><div><div class="stat-value">${pct}%</div><div class="stat-label">Completion Rate</div></div></div>
+  `;
+
+  // class chart
+  const classMap = {};
+  students.forEach(s=>{ if(!classMap[s.class]) classMap[s.class]={t:0,p:0}; classMap[s.class].t++; if(s.printed) classMap[s.class].p++; });
+  const classes = Object.entries(classMap).sort((a,b)=>b[1].t-a[1].t).slice(0,8);
+  const maxT = Math.max(...classes.map(c=>c[1].t),1);
+  document.getElementById('class-chart').innerHTML = classes.map(([cls,{t,p}])=>`
+    <div class="chart-bar-row">
+      <div class="chart-bar-label">${cls}</div>
+      <div style="flex:1">
+        <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${p/maxT*100}%;background:var(--success)"></div></div>
+        <div class="chart-bar-track" style="margin-top:3px"><div class="chart-bar-fill" style="width:${t/maxT*100}%;background:#e2e8f0;position:relative"></div></div>
+      </div>
+      <div class="chart-bar-val">${p}/${t}</div>
+    </div>
+  `).join('');
+
+  // recent
+  const recent = [...students].sort((a,b)=>b.id-a.id).slice(0,5);
+  document.getElementById('recent-activity').innerHTML = recent.map(s=>`
+    <div class="recent-item">
+      <div class="avatar">${s.photo?`<img src="${s.photo}">`:(s.name[0]||'?')}</div>
+      <div><div class="recent-name">${s.name}</div><div class="recent-info">Class ${s.class}-${s.division} · ${s.adYear}</div></div>
+      <div class="ml-auto">${s.printed?'<span class="badge badge-success">✓ Printed</span>':'<span class="badge badge-warning">Pending</span>'}</div>
+    </div>
+  `).join('') || '<div class="empty-state"><div class="icon">📋</div><p>No students yet</p></div>';
+
+  // progress
+  document.getElementById('overall-progress').innerHTML = `
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:14px;color:var(--text2)">ID Cards Generated</span>
+      <span style="font-size:14px;font-weight:600">${printed} / ${total} (${pct}%)</span>
+    </div>
+    <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+    <div style="display:flex;gap:20px;margin-top:12px">
+      <span style="font-size:13px;color:var(--text2)">🟢 Printed: <b>${printed}</b></span>
+      <span style="font-size:13px;color:var(--text2)">🟡 Pending: <b>${pending}</b></span>
+    </div>
+  `;
+}
+
+// ==================== STUDENTS TABLE ====================
+function populateClassFilters() {
+  const classes = [...new Set(students.map(s=>s.class))].sort();
+  ['stu-class-filter','id-class-filter'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.innerHTML = '<option value="">All Classes</option>' + classes.map(c=>`<option>${c}</option>`).join('');
+  });
+}
+
+function filteredStudents(searchId, classId, divId, statusId) {
+  const q = (document.getElementById(searchId)||{}).value?.toLowerCase()||'';
+  const cls = (document.getElementById(classId)||{}).value||'';
+  const div = (document.getElementById(divId)||{}).value||'';
+  const sts = (document.getElementById(statusId)||{}).value||'';
+  return students.filter(s=>{
+    const match = !q || s.name.toLowerCase().includes(q) || String(s.id).includes(q) || (s.regNo||'').toLowerCase().includes(q);
+    const matchCls = !cls || s.class===cls;
+    const matchDiv = !div || s.division===div;
+    const matchSts = !sts || (sts==='printed'?s.printed:!s.printed);
+    return match && matchCls && matchDiv && matchSts;
+  });
+}
+
+function renderStudentTable() {
+  const data = filteredStudents('stu-search','stu-class-filter','stu-div-filter','');
+  const total = data.length;
+  const pages = Math.ceil(total/PER_PAGE) || 1;
+  if(stuPage > pages) stuPage = 1;
+  const slice = data.slice((stuPage-1)*PER_PAGE, stuPage*PER_PAGE);
+
+  document.getElementById('student-tbody').innerHTML = slice.length ? slice.map((s,i)=>`
+    <tr>
+      <td style="color:var(--text3);font-size:12px">${(stuPage-1)*PER_PAGE+i+1}</td>
+      <td><div class="avatar" style="width:36px;height:36px;font-size:12px">${s.photo?`<img src="${s.photo}">`:(s.name[0]||'?')}</div></td>
+      <td><b>${s.name}</b></td>
+      <td>${s.class}</td><td>${s.division}</td>
+      <td>${s.rollNo||s.id}</td><td>${s.regNo||'-'}</td><td>${s.gender}</td><td>${s.adYear}</td>
+      <td>${s.printed?'<span class="badge badge-success">✓ Printed</span>':'<span class="badge badge-warning">Pending</span>'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-outline btn-xs" onclick="viewStudent(${s.id})" title="View">👁</button>
+        <button class="btn btn-outline btn-xs" onclick="editStudent(${s.id})" title="Edit">✏️</button>
+        <button class="btn btn-accent btn-xs" onclick="openIDCard(${s.id})" title="ID Card">🪪</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteStudent(${s.id})" title="Delete">🗑</button>
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:32px">No students found</td></tr>';
+
+  renderPagination('stu-pagination', stuPage, pages, p=>{ stuPage=p; renderStudentTable(); });
+}
+
+function renderIdTable() {
+  const data = filteredStudents('id-search','id-class-filter','','id-status-filter');
+  const total = data.length;
+  const pages = Math.ceil(total/PER_PAGE) || 1;
+  if(idPage > pages) idPage = 1;
+  const slice = data.slice((idPage-1)*PER_PAGE, idPage*PER_PAGE);
+
+  document.getElementById('id-tbody').innerHTML = slice.length ? slice.map((s,i)=>`
+    <tr>
+      <td style="color:var(--text3);font-size:12px">${(idPage-1)*PER_PAGE+i+1}</td>
+      <td><div class="avatar" style="width:36px;height:36px;font-size:12px">${s.photo?`<img src="${s.photo}">`:(s.name[0]||'?')}</div></td>
+      <td><b>${s.name}</b></td>
+      <td>${s.class}-${s.division}</td>
+      <td>${s.rollNo||s.id}</td><td>${s.regNo||'-'}</td>
+      <td>${s.blood||'-'}</td>
+      <td>${s.printed?'<span class="badge badge-success">✓ Printed</span>':'<span class="badge badge-warning">⏳ Pending</span>'}</td>
+      <td style="font-size:12px;color:var(--text2)">${s.printDate||'-'}</td>
+      <td>
+        <button class="btn btn-primary btn-xs" onclick="openIDCard(${s.id})" title="Generate">🪪 Generate</button>
+        ${s.printed?`<button class="btn btn-outline btn-xs" onclick="resetPrint(${s.id})">↩ Reset</button>`:''}
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:32px">No students found</td></tr>';
+
+  renderPagination('id-pagination', idPage, pages, p=>{ idPage=p; renderIdTable(); });
+}
+
+function renderReportTable() {
+  const q = (document.getElementById('rep-search')||{}).value?.toLowerCase()||'';
+  const sts = (document.getElementById('rep-status')||{}).value||'';
+  const data = students.filter(s=>{
+    const match = !q || s.name.toLowerCase().includes(q) || (s.regNo||'').includes(q);
+    const matchSts = !sts || (sts==='printed'?s.printed:!s.printed);
+    return match && matchSts;
+  });
+  document.getElementById('report-tbody').innerHTML = data.length ? data.map((s,i)=>`
+    <tr>
+      <td>${i+1}</td><td><b>${s.name}</b></td><td>${s.class}</td><td>${s.division}</td>
+      <td>${s.rollNo||s.id}</td><td>${s.regNo||'-'}</td><td>${s.adYear}</td><td>${s.gender}</td>
+      <td>${s.blood||'-'}</td><td>${s.contact||'-'}</td>
+      <td>${s.printed?'<span class="badge badge-success">Printed</span>':'<span class="badge badge-danger">Pending</span>'}</td>
+      <td style="font-size:12px">${s.printDate||'-'}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:32px">No data</td></tr>';
+}
+
+function renderPagination(id, current, total, cb) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(total <= 1) { el.innerHTML=''; return; }
+  let html = `<button class="pg-btn" onclick="(${cb})(${current-1})" ${current===1?'disabled':''}>‹ Prev</button>`;
+  for(let i=1;i<=total;i++) {
+    if(i===1||i===total||Math.abs(i-current)<=2) html+=`<button class="pg-btn ${i===current?'active':''}" onclick="(${cb})(${i})">${i}</button>`;
+    else if(Math.abs(i-current)===3) html+=`<span style="padding:0 4px;color:var(--text3)">…</span>`;
+  }
+  html += `<button class="pg-btn" onclick="(${cb})(${current+1})" ${current===total?'disabled':''}>Next ›</button>`;
+  el.innerHTML = html;
+}
+
+// ==================== STUDENT CRUD ====================
+function openAddStudent() {
+  clearStudentForm();
+  document.getElementById('student-modal-title').textContent = 'Add New Student';
+  document.getElementById('f-edit-id').value = '';
+  openModal('student-modal');
+}
+
+function editStudent(id) {
+  const s = students.find(x=>x.id===id);
+  if(!s) return;
+  clearStudentForm();
+  document.getElementById('student-modal-title').textContent = 'Edit Student';
+  document.getElementById('f-edit-id').value = id;
+  document.getElementById('f-name').value = s.name;
+  document.getElementById('f-roll').value = s.rollNo||s.id;
+  document.getElementById('f-class').value = s.class;
+  document.getElementById('f-div').value = s.division;
+  document.getElementById('f-gender').value = s.gender;
+  document.getElementById('f-regno').value = s.regNo||'';
+  document.getElementById('f-adyear').value = s.adYear;
+  document.getElementById('f-blood').value = s.blood||'';
+  document.getElementById('f-father').value = s.father||'';
+  document.getElementById('f-mother').value = s.mother||'';
+  document.getElementById('f-contact').value = s.contact||'';
+  document.getElementById('f-address').value = s.address||'';
+  document.getElementById('f-photo-data').value = s.photo||'';
+  if(s.photo) {
+    document.getElementById('photo-preview').src = s.photo;
+    document.getElementById('photo-preview').style.display='block';
+    document.getElementById('upload-hint').style.display='none';
+  }
+  openModal('student-modal');
+}
+
+function saveStudent() {
+  const name = document.getElementById('f-name').value.trim();
+  const cls = document.getElementById('f-class').value;
+  if(!name || !cls) { toast('Please fill required fields (Name, Class)','error'); return; }
+  const editId = document.getElementById('f-edit-id').value;
+  const data = {
+    name, class: cls,
+    division: document.getElementById('f-div').value,
+    gender: document.getElementById('f-gender').value,
+    rollNo: document.getElementById('f-roll').value||'',
+    regNo: document.getElementById('f-regno').value,
+    adYear: document.getElementById('f-adyear').value,
+    blood: document.getElementById('f-blood').value,
+    father: document.getElementById('f-father').value,
+    mother: document.getElementById('f-mother').value,
+    contact: document.getElementById('f-contact').value,
+    address: document.getElementById('f-address').value,
+    photo: document.getElementById('f-photo-data').value,
+  };
+  if(editId) {
+    const idx = students.findIndex(s=>s.id===parseInt(editId));
+    if(idx>-1) { students[idx] = {...students[idx],...data}; toast('Student updated!','success'); }
+  } else {
+    students.unshift({ id: nextId(), ...data, printed:false, printDate:'', addedDate: new Date().toISOString().split('T')[0] });
+    toast('Student added!','success');
+  }
+  save(); closeModal('student-modal'); renderStudentTable(); renderIdTable(); populateClassFilters(); refreshDashboard();
+}
+
+function deleteStudent(id) {
+  if(!confirm('Delete this student?')) return;
+  students = students.filter(s=>s.id!==id);
+  save(); renderStudentTable(); refreshDashboard(); toast('Student deleted','info');
+}
+
+function viewStudent(id) {
+  const s = students.find(x=>x.id===id);
+  if(!s) return;
+  document.getElementById('view-modal-body').innerHTML = `
+    <div style="display:flex;gap:20px;align-items:flex-start">
+      <div style="flex-shrink:0">
+        <div class="avatar" style="width:80px;height:90px;border-radius:10px;font-size:28px">
+          ${s.photo?`<img src="${s.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`:(s.name[0]||'?')}
+        </div>
+      </div>
+      <div style="flex:1">
+        <h3 style="font-size:20px;font-weight:700;margin-bottom:4px">${s.name}</h3>
+        <span class="badge badge-info">Class ${s.class}-${s.division}</span>
+        ${s.printed?'<span class="badge badge-success" style="margin-left:8px">✓ ID Printed</span>':'<span class="badge badge-warning" style="margin-left:8px">Pending</span>'}
+      </div>
+    </div>
+    <hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">
+    <table style="width:100%;font-size:14px;border-collapse:collapse">
+      ${[['Roll No',s.rollNo||s.id],['Gen. Reg No',s.regNo||'-'],['Ad. Year',s.adYear],['Gender',s.gender],['Blood Group',s.blood||'-'],['Father',s.father||'-'],['Mother',s.mother||'-'],['Contact',s.contact||'-'],['Address',s.address||'-'],['Print Date',s.printDate||'Not Printed']].map(([k,v])=>`
+        <tr><td style="color:var(--text2);padding:6px 0;width:40%;font-weight:500">${k}</td><td style="padding:6px 0">${v}</td></tr>
+      `).join('')}
+    </table>
+  `;
+  document.getElementById('view-gen-btn').onclick = ()=>{ closeModal('view-modal'); openIDCard(id); };
+  openModal('view-modal');
+}
+
+function clearStudentForm() {
+  ['f-name','f-roll','f-regno','f-father','f-mother','f-contact','f-address'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-class').value='';
+  document.getElementById('f-photo-data').value='';
+  document.getElementById('photo-preview').src='';
+  document.getElementById('photo-preview').style.display='none';
+  document.getElementById('upload-hint').style.display='block';
+}
+
+function handlePhotoUpload(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > 3*1024*1024) { toast('Image too large (max 3MB)','error'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const data = ev.target.result;
+    document.getElementById('f-photo-data').value = data;
+    document.getElementById('photo-preview').src = data;
+    document.getElementById('photo-preview').style.display='block';
+    document.getElementById('upload-hint').style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ==================== ID CARD ====================
+function openIDCard(id) {
+  const s = students.find(x=>x.id===id);
+  if(!s) return;
+  currentStudentForCard = s;
+  document.getElementById('idcard-preview-wrap').innerHTML = buildIDCardHTML(s);
+  openModal('idcard-modal');
+}
+
+function buildIDCardHTML(s) {
+  const photoHTML = s.photo
+    ? `<img src="${s.photo}" style="width:100%;height:100%;object-fit:cover">`
+    : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;color:#94a3b8;background:#f1f5f9">${s.name[0]||'?'}</div>`;
+
+  return `
+    <div style="width:340px;margin:0 auto;border:3px solid #1a3c6e;border-radius:16px;overflow:hidden;font-family:'Plus Jakarta Sans',sans-serif;box-shadow:0 8px 32px rgba(0,0,0,0.15)">
+      <!-- HEADER -->
+      <div style="background:linear-gradient(135deg,#1a3c6e,#2563a8);padding:16px;text-align:center;position:relative">
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Maharashtra State</div>
+        <div style="font-size:18px;font-weight:800;color:white;letter-spacing:0.5px">VIDYANIKETAN SCHOOL</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:3px">Pune, Maharashtra – 411001 | Ph: 020-12345678</div>
+        <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#f59e0b,#fcd34d,#f59e0b)"></div>
+      </div>
+      <!-- BODY -->
+      <div style="background:white;padding:18px 20px">
+        <div style="text-align:center;margin-bottom:12px">
+          <span style="background:#eff6ff;color:#1e40af;font-size:11px;font-weight:700;padding:3px 16px;border-radius:20px;letter-spacing:0.5px">STUDENT IDENTITY CARD — ${s.adYear}</span>
+        </div>
+        <div style="display:flex;gap:16px;align-items:flex-start">
+          <div style="flex-shrink:0">
+            <div style="width:90px;height:108px;border:2.5px solid #1a3c6e;border-radius:8px;overflow:hidden">${photoHTML}</div>
+            <div style="text-align:center;margin-top:6px;font-size:10px;color:#64748b">Roll No: <b style="color:#0f172a">${s.rollNo||s.id}</b></div>
+          </div>
+          <div style="flex:1;padding-top:4px">
+            <div style="font-size:15px;font-weight:800;color:#0f172a;line-height:1.2;margin-bottom:8px">${s.name}</div>
+            <table style="width:100%;border-collapse:collapse;font-size:12px">
+              ${row('Class',`${s.class} – Div ${s.division}`)}
+              ${s.regNo?row('Reg No',s.regNo):''}
+              ${s.father?row('Father',s.father):''}
+              ${row('Gender',s.gender)}
+              ${s.blood?row('Blood','<b style="color:#dc2626">'+s.blood+'</b>'):''}
+            </table>
+          </div>
+        </div>
+        ${s.contact||s.address?`
+        <div style="margin-top:12px;padding-top:10px;border-top:1px dashed #e2e8f0">
+          ${s.contact?`<div style="font-size:11px;color:#475569">📞 <b style="color:#0f172a">${s.contact}</b></div>`:''}
+          ${s.address?`<div style="font-size:11px;color:#475569;margin-top:3px">📍 ${s.address}</div>`:''}
+        </div>`:''}
+      </div>
+      <!-- FOOTER -->
+      <div style="background:#f8fafc;border-top:2px solid #1a3c6e;padding:10px 20px;display:flex;justify-content:space-between;align-items:center">
+        <div style="text-align:center">
+          <div style="width:60px;border-top:1px solid #94a3b8;margin-bottom:4px"></div>
+          <div style="font-size:10px;color:#64748b">Class Teacher</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:9px;color:#94a3b8">If found, please return to:</div>
+          <div style="font-size:9px;font-weight:700;color:#1a3c6e">Vidyaniketan School, Pune</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:60px;border-top:1px solid #94a3b8;margin-bottom:4px"></div>
+          <div style="font-size:10px;color:#64748b">Principal</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function row(label, value) {
+  return `<tr><td style="color:#64748b;padding:2px 0;padding-right:6px;white-space:nowrap">${label}:</td><td style="color:#0f172a;font-weight:500">${value}</td></tr>`;
+}
+
+function printIDCardPDF() {
+  const s = currentStudentForCard;
+  if(!s) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+
+  // Card dimensions in mm (credit card ratio, centered on A4)
+  const cW = 85.6, cH = 108;
+  const marginX = (210-cW)/2, marginY = 40;
+
+  // Background
+  doc.setFillColor(26,60,110);
+  doc.roundedRect(marginX, marginY, cW, 22, 3, 3, 'F');
+
+  // Header text
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(7); doc.setFont(undefined,'normal');
+  doc.text('MAHARASHTRA STATE', marginX+cW/2, marginY+6, {align:'center'});
+  doc.setFontSize(11); doc.setFont(undefined,'bold');
+  doc.text('VIDYANIKETAN SCHOOL', marginX+cW/2, marginY+12, {align:'center'});
+  doc.setFontSize(6); doc.setFont(undefined,'normal');
+  doc.text('Pune, Maharashtra - 411001 | Ph: 020-12345678', marginX+cW/2, marginY+17, {align:'center'});
+
+  // Gold strip
+  doc.setFillColor(245,158,11);
+  doc.rect(marginX, marginY+20, cW, 2, 'F');
+
+  // Card body
+  doc.setFillColor(255,255,255);
+  doc.rect(marginX, marginY+22, cW, cH-22, 'F');
+
+  // Blue badge
+  doc.setFillColor(239,246,255);
+  doc.roundedRect(marginX+15, marginY+26, cW-30, 7, 2, 2, 'F');
+  doc.setTextColor(30,64,175); doc.setFontSize(6); doc.setFont(undefined,'bold');
+  doc.text(`STUDENT IDENTITY CARD — ${s.adYear}`, marginX+cW/2, marginY+31, {align:'center'});
+
+  // Photo box
+  doc.setDrawColor(26,60,110); doc.setLineWidth(0.5);
+  doc.rect(marginX+4, marginY+36, 22, 27);
+  if(s.photo && s.photo.startsWith('data:image')) {
+    try { doc.addImage(s.photo, 'JPEG', marginX+4, marginY+36, 22, 27); } catch(e){}
+  } else {
+    doc.setFillColor(241,245,249); doc.rect(marginX+4, marginY+36, 22, 27, 'F');
+    doc.setTextColor(148,163,184); doc.setFontSize(8);
+    doc.text('No Photo', marginX+15, marginY+51, {align:'center'});
+  }
+
+  // Roll no under photo
+  doc.setTextColor(100,116,139); doc.setFontSize(6); doc.setFont(undefined,'normal');
+  doc.text(`Roll: ${s.rollNo||s.id}`, marginX+15, marginY+67, {align:'center'});
+
+  // Student details
+  doc.setTextColor(15,23,42); doc.setFontSize(9); doc.setFont(undefined,'bold');
+  doc.text(s.name.length>20?s.name.substring(0,20)+'…':s.name, marginX+30, marginY+42);
+
+  const details = [
+    ['Class', `${s.class} – Div ${s.division}`],
+    s.regNo?['Reg No', s.regNo]:null,
+    s.father?['Father', s.father.substring(0,20)]:null,
+    ['Gender', s.gender],
+    s.blood?['Blood', s.blood]:null,
+  ].filter(Boolean);
+
+  let dy = marginY+48;
+  details.forEach(([k,v])=>{
+    doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(100,116,139);
+    doc.text(k+':', marginX+30, dy);
+    doc.setFont(undefined,'bold'); doc.setTextColor(15,23,42);
+    doc.text(String(v), marginX+50, dy);
+    dy+=6;
+  });
+
+  // Contact
+  if(s.contact||s.address) {
+    doc.setLineWidth(0.2); doc.setDrawColor(226,232,240);
+    doc.line(marginX+4, marginY+72, marginX+cW-4, marginY+72);
+    doc.setFont(undefined,'normal'); doc.setFontSize(6); doc.setTextColor(71,85,105);
+    if(s.contact) doc.text('Phone: '+s.contact, marginX+4, marginY+77);
+    if(s.address) doc.text(s.address.substring(0,45), marginX+4, marginY+82);
+  }
+
+  // Footer
+  doc.setFillColor(248,250,252);
+  doc.rect(marginX, marginY+cH-18, cW, 18, 'F');
+  doc.setLineWidth(1); doc.setDrawColor(26,60,110);
+  doc.line(marginX, marginY+cH-18, marginX+cW, marginY+cH-18);
+
+  doc.setLineWidth(0.3); doc.setDrawColor(148,163,184);
+  doc.line(marginX+8, marginY+cH-6, marginX+28, marginY+cH-6);
+  doc.line(marginX+cW-28, marginY+cH-6, marginX+cW-8, marginY+cH-6);
+  doc.setFontSize(5.5); doc.setTextColor(100,116,139); doc.setFont(undefined,'normal');
+  doc.text('Class Teacher', marginX+18, marginY+cH-3, {align:'center'});
+  doc.text('Principal', marginX+cW-18, marginY+cH-3, {align:'center'});
+
+  doc.setFontSize(5); doc.setTextColor(148,163,184);
+  doc.text('If found, please return to Vidyaniketan School, Pune', marginX+cW/2, marginY+cH-3, {align:'center'});
+
+  // Border around card
+  doc.setLineWidth(0.8); doc.setDrawColor(26,60,110);
+  doc.roundedRect(marginX, marginY, cW, cH, 3, 3);
+
+  doc.save(`ID_Card_${s.name.replace(/\s+/g,'_')}.pdf`);
+
+  // Mark as printed
+  const idx = students.findIndex(x=>x.id===s.id);
+  if(idx>-1) {
+    students[idx].printed = true;
+    students[idx].printDate = new Date().toISOString().split('T')[0];
+    save();
+  }
+  closeModal('idcard-modal');
+  renderStudentTable(); renderIdTable(); refreshDashboard();
+  toast('ID Card PDF generated & saved!','success');
+}
+
+function printAllPending() {
+  const pending = students.filter(s=>!s.printed);
+  if(!pending.length) { toast('No pending ID cards!','info'); return; }
+  if(!confirm(`Generate PDF for ${pending.length} pending students?`)) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const today = new Date().toISOString().split('T')[0];
+
+  pending.forEach((s,i)=>{
+    if(i>0) doc.addPage();
+    drawCardOnDoc(doc, s, 40, 40);
+    const idx = students.findIndex(x=>x.id===s.id);
+    if(idx>-1){ students[idx].printed=true; students[idx].printDate=today; }
+  });
+
+  doc.save('All_Pending_ID_Cards.pdf');
+  save(); renderStudentTable(); renderIdTable(); refreshDashboard();
+  toast(`${pending.length} ID cards generated!`,'success');
+}
+
+function drawCardOnDoc(doc, s, marginX, marginY) {
+  const cW=85.6, cH=108;
+  doc.setFillColor(26,60,110);
+  doc.roundedRect(marginX,marginY,cW,22,3,3,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(7); doc.setFont(undefined,'normal');
+  doc.text('MAHARASHTRA STATE',marginX+cW/2,marginY+6,{align:'center'});
+  doc.setFontSize(11); doc.setFont(undefined,'bold');
+  doc.text('VIDYANIKETAN SCHOOL',marginX+cW/2,marginY+12,{align:'center'});
+  doc.setFontSize(6); doc.setFont(undefined,'normal');
+  doc.text('Pune, Maharashtra - 411001',marginX+cW/2,marginY+17,{align:'center'});
+  doc.setFillColor(245,158,11);
+  doc.rect(marginX,marginY+20,cW,2,'F');
+  doc.setFillColor(255,255,255);
+  doc.rect(marginX,marginY+22,cW,cH-22,'F');
+  doc.setFillColor(239,246,255); doc.roundedRect(marginX+15,marginY+26,cW-30,7,2,2,'F');
+  doc.setTextColor(30,64,175); doc.setFontSize(6); doc.setFont(undefined,'bold');
+  doc.text(`STUDENT IDENTITY CARD — ${s.adYear}`,marginX+cW/2,marginY+31,{align:'center'});
+  doc.setDrawColor(26,60,110); doc.setLineWidth(0.5);
+  doc.rect(marginX+4,marginY+36,22,27);
+  if(s.photo&&s.photo.startsWith('data:image')){ try{doc.addImage(s.photo,'JPEG',marginX+4,marginY+36,22,27);}catch(e){} }
+  doc.setTextColor(100,116,139); doc.setFontSize(6); doc.setFont(undefined,'normal');
+  doc.text(`Roll: ${s.rollNo||s.id}`,marginX+15,marginY+67,{align:'center'});
+  doc.setTextColor(15,23,42); doc.setFontSize(9); doc.setFont(undefined,'bold');
+  doc.text(s.name.length>20?s.name.substring(0,20)+'…':s.name,marginX+30,marginY+42);
+  const dets=[['Class',`${s.class}–${s.division}`],s.regNo?['Reg',s.regNo]:null,['Gender',s.gender],s.blood?['Blood',s.blood]:null].filter(Boolean);
+  let dy=marginY+48;
+  dets.forEach(([k,v])=>{ doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(100,116,139); doc.text(k+':',marginX+30,dy); doc.setFont(undefined,'bold'); doc.setTextColor(15,23,42); doc.text(String(v),marginX+50,dy); dy+=6; });
+  doc.setFillColor(248,250,252); doc.rect(marginX,marginY+cH-18,cW,18,'F');
+  doc.setLineWidth(1); doc.setDrawColor(26,60,110); doc.line(marginX,marginY+cH-18,marginX+cW,marginY+cH-18);
+  doc.setLineWidth(0.8); doc.setDrawColor(26,60,110); doc.roundedRect(marginX,marginY,cW,cH,3,3);
+}
+
+function resetPrint(id) {
+  const idx = students.findIndex(s=>s.id===id);
+  if(idx>-1){ students[idx].printed=false; students[idx].printDate=''; save(); renderIdTable(); refreshDashboard(); toast('Reset to Pending','info'); }
+}
+
+// ==================== EXPORT ====================
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+  const headers = ['S.No','Roll No','Name','Class','Division','Gender','Reg No','Ad Year','Blood Group','Father','Mother','Contact','Address','ID Printed','Print Date'];
+  const rows = students.map((s,i)=>[i+1,s.rollNo||s.id,s.name,s.class,s.division,s.gender,s.regNo||'',s.adYear,s.blood||'',s.father||'',s.mother||'',s.contact||'',s.address||'',s.printed?'Yes':'No',s.printDate||'']);
+  const ws = XLSX.utils.aoa_to_sheet([headers,...rows]);
+  ws['!cols'] = headers.map((_,i)=>({wch:[6,10,25,10,10,8,15,12,10,20,20,14,30,12,12][i]||12}));
+  XLSX.utils.book_append_sheet(wb,ws,'Students');
+  // Summary sheet
+  const printed=students.filter(s=>s.printed).length;
+  const sumData=[['Report Generated',new Date().toLocaleDateString()],['Total Students',students.length],['ID Cards Printed',printed],['Pending',students.length-printed],['Completion %',Math.round(printed/students.length*100)+'%']];
+  const ws2=XLSX.utils.aoa_to_sheet(sumData);
+  XLSX.utils.book_append_sheet(wb,ws2,'Summary');
+  XLSX.writeFile(wb,'School_ID_Report_'+new Date().toISOString().split('T')[0]+'.xlsx');
+  toast('Excel exported!','success');
+}
+
+function exportPDFReport() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+  const printed = students.filter(s=>s.printed).length;
+  const today = new Date().toLocaleDateString('en-IN');
+
+  // Header
+  doc.setFillColor(26,60,110); doc.rect(0,0,297,25,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(16); doc.setFont(undefined,'bold');
+  doc.text('VIDYANIKETAN SCHOOL – Student ID Card Report',148.5,11,{align:'center'});
+  doc.setFontSize(9); doc.setFont(undefined,'normal');
+  doc.text(`Generated: ${today}  |  Total: ${students.length}  |  Printed: ${printed}  |  Pending: ${students.length-printed}`,148.5,19,{align:'center'});
+
+  // Table header
+  let y=35;
+  const cols=[10,15,55,18,15,15,30,22,18,22,30];
+  const headers=['#','Roll','Name','Class','Div','Gender','Reg No','Ad Year','Blood','Contact','Status'];
+  doc.setFillColor(237,242,247);
+  doc.rect(10,y-5,277,9,'F');
+  doc.setTextColor(26,60,110); doc.setFontSize(8); doc.setFont(undefined,'bold');
+  let cx=10;
+  headers.forEach((h,i)=>{ doc.text(h,cx,y); cx+=cols[i]; });
+  y+=7;
+  doc.setLineWidth(0.3); doc.setDrawColor(200,210,220);
+  doc.line(10,y-2,287,y-2);
+
+  // Rows
+  doc.setFont(undefined,'normal'); doc.setFontSize(7.5);
+  students.forEach((s,i)=>{
+    if(y>190){ doc.addPage(); y=20; }
+    const even = i%2===0;
+    if(even){ doc.setFillColor(249,250,251); doc.rect(10,y-4,277,8,'F'); }
+    doc.setTextColor(s.printed?5:100, s.printed?100:5, 5);
+    doc.setTextColor(15,23,42);
+    const vals=[i+1,s.rollNo||s.id,s.name.substring(0,28),s.class,s.division,s.gender,(s.regNo||'-').substring(0,16),s.adYear,s.blood||'-',(s.contact||'-').substring(0,14),s.printed?'✓ Printed':'Pending'];
+    let cx2=10;
+    vals.forEach((v,vi)=>{
+      if(vi===vals.length-1) { doc.setTextColor(s.printed?5:180, s.printed?120:5, 5); }
+      doc.text(String(v),cx2,y); cx2+=cols[vi];
+      doc.setTextColor(15,23,42);
+    });
+    y+=8;
+  });
+
+  doc.save('Student_ID_Report_'+new Date().toISOString().split('T')[0]+'.pdf');
+  toast('PDF Report exported!','success');
+}
+
+// ==================== MODALS ====================
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o) closeModal(o.id); }));
+
+// ==================== TOAST ====================
+function toast(msg, type='info') {
+  const t = document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML = `${type==='success'?'✅':type==='error'?'❌':'ℹ️'} ${msg}`;
+  document.getElementById('toast-wrap').appendChild(t);
+  setTimeout(()=>t.remove(),3500);
+}
+
+// ==================== INIT ====================
+load();
+</script>
+</body>
+</html>
